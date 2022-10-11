@@ -1,0 +1,31 @@
+import paho.mqtt.client as mqtt
+import sys
+
+Broker = "your_broker_ipv4_IP"
+PortaBroker = 1883
+KeepAliveBroker = 60
+topic = "your_topic_name" 
+
+def on_connect(client, userdata, flags, rc):
+    print("[STATUS] Connectiong to Broker.")
+
+    #faz subscribe automatico no topico
+    client.subscribe(topic)
+
+#Callback - mensagem recebida do broker
+def on_message(client, userdata, msg):
+    msgRecieved = str(msg.payload)
+
+    print("Message from "+msg.topic+": "+msgRecieved)
+
+#programa principal:
+try:
+    print("[STATUS] Starting MQTT...")
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+
+    client.connect(Broker, PortaBroker, KeepAliveBroker)
+    client.loop_forever()
+except KeyboardInterrupt:
+    sys.exit(0)
