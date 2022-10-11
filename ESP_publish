@@ -1,0 +1,97 @@
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+//=========================================================================================
+unsigned long previousMillis = 0;
+const long interval = 1000;
+//=========================================================================================
+#define ssid "your_wifi_ssid" 
+#define password "your_wifi_password"
+#define mqttClient "your_client_name"
+#define serverIP "your_broker_ipv4_IP"
+#define port 1883
+//#define mqtt_user ""
+//#define mqtt_password ""
+//=========================================================================================
+#define timeBTWsend 3000
+//=========================================================================================
+#define yourSubTopic "ldrValue"
+//=========================================================================================
+int sensorValue = 0;
+String ldrValue = "";
+//=========================================================================================
+unsigned long current_time;
+unsigned long last_send = 0;
+WiFiClient espClient;
+PubSubClient client(espClient);
+//=========================================================================================
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i=0;i<length;i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+//=========================================================================================
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Trying to connect to MQTT Broker... ");
+    if (client.connect(mqttClient)) {
+      Serial.println("connected");
+
+      client.publish(yourSubTopic, ldrValue.c_str());
+
+      //client.subscribe("yout_topic");
+    } else {
+      Serial.print("connection failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 3 seconds");
+      // Wait 3 seconds before retrying
+      delay(3000);
+    }
+  }
+}
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+//=========================================================================================
+void setup()
+{
+  Serial.begin(57600);
+  client.setServer(serverIP, port);
+  client.setCallback(callback);
+  setup_wifi();
+  delay(1500);
+  sensorValue = analogRead(A0);
+  ldrValue = String(sensorValue);
+}
+//=========================================================================================
+void loop()
+{
+  if (!client.connected()) {
+    reconnect();   
+  }
+  client.loop();  
+
+  current_time = millis();
+  if (current_time - last_send >= timeBTWsend) {
+    last_send = current_time;
+    sensorValue = analogRead(A0);
+    ldrValue = String(sensorValue);
+    client.publish(yourSubTopic, ldrValue.c_str());
+  }
+}
